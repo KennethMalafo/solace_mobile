@@ -1,13 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'package:solace_mobile_frontend/screens/ligtas_tips_screen.dart';
-import 'package:solace_mobile_frontend/screens/notifications_screen.dart';
-import 'package:solace_mobile_frontend/weather_forecasting/weather_api.dart';
-import 'package:solace_mobile_frontend/weather_forecasting/weather_model.dart';
+import 'package:solace_mobile_frontend/screens/evacuation_location.dart';
+import 'package:solace_mobile_frontend/screens/news.dart';
+import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/weather_api.dart';
+import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/weather_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +26,8 @@ class HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const HomeContent(),
     const LigtasTips(),
-    const NotificationsScreen(),
+    const EvacuationLocation(),
+    const WaterLevelPredictionWidget(),
   ];
 
   // This function will handle the tab change
@@ -77,8 +81,12 @@ class HomeScreenState extends State<HomeScreen> {
                     outlinedIcon: Icons.tips_and_updates_outlined,
                   ),
                   BarItem(
-                    filledIcon: Icons.notifications,
-                    outlinedIcon: Icons.notifications_none,
+                    filledIcon: Icons.map,
+                    outlinedIcon: Icons.map_outlined,
+                  ),
+                  BarItem(
+                    filledIcon: Icons.newspaper_rounded,
+                    outlinedIcon: Icons.newspaper_outlined,
                   ),
                 ],
               ),
@@ -99,28 +107,62 @@ class HomeContent extends StatefulWidget {
 
 class HomeContentState extends State<HomeContent> with SingleTickerProviderStateMixin {
   Future<WeatherData>? weatherData;
-  bool isRefreshing = false; // New state variable
+  Future<double>? waterLevelData; // Change this to Future<double> to hold the water level
+  bool isRefreshing = false;
   late AnimationController _animationController;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+  List<ConnectivityResult> _connectivityResult = [];
 
   @override
   void initState() {
     super.initState();
     weatherData = fetchWeather();
+    waterLevelData = fetchWaterLevel(); // Fetch the water level initially
+    // Initial connectivity check
+    _checkInitialConnectivity();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    // Listen for connectivity changes
-    Connectivity().onConnectivityChanged.listen((result) {
-      // Check if there's any connectivity
-      if (result.isNotEmpty && (result.contains(ConnectivityResult.mobile) || result.contains(ConnectivityResult.wifi))) {
-        // When internet is back, refresh the weather data
-        _refreshWeather();
+
+    // Subscribe to connectivity changes
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+      setState(() {
+        _connectivityResult = result; // Update the connectivity state
+      });
+
+       // Check if we have internet connection from the result
+      if (result.contains(ConnectivityResult.mobile) || result.contains(ConnectivityResult.wifi)) {
+        // Refetch the weather data when connectivity changes
+        setState(() {
+          weatherData = fetchWeather(); // Refresh weather data
+          waterLevelData = fetchWaterLevel();
+        });
       }
     });
   }
 
-  Future<void> _refreshWeather() async {
+      // Check if we have internet connection from the result
+      //if (result.contains(ConnectivityResult.mobile) || result.contains(ConnectivityResult.wifi)) {
+        //_refreshWeatherandWaterLevel();
+     // }
+   // });
+  //}
+
+  Future<void> _checkInitialConnectivity() async {
+    _connectivityResult = await Connectivity().checkConnectivity();
+    setState(() {}); // Update UI based on initial connectivity status
+  }
+
+  @override
+  void dispose() {
+    // Cancel the subscription when the widget is disposed
+    _connectivitySubscription.cancel();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshWeatherandWaterLevel() async {
     setState(() {
       isRefreshing = true; // Set refreshing to true when the pull down occurs
     });
@@ -128,16 +170,32 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
     // Simulate network delay
     await Future.delayed(const Duration(seconds: 2));
 
+    // Refresh both weather and water level data
+    weatherData = fetchWeather();
+    waterLevelData = fetchWaterLevel(); // Fetch the latest water level
+
     setState(() {
-      weatherData = fetchWeather();
       isRefreshing = false; // Reset refreshing to false after fetching
     });
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  Future<double> fetchWaterLevel() async {
+    // Logic to fetch the water level from Firestore
+    var snapshot = await FirebaseFirestore.instance
+        .collection('water_level')
+        .orderBy('date', descending: true) // Sort by date in descending order
+        .limit(1) // Get only the latest document
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      var latestDocument = snapshot.docs.first;
+      var data = latestDocument.data();
+      double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
+      currentWaterLevel += 4.0; // Add 4 to the fetched water level
+      return currentWaterLevel; // Return the water level
+    }
+
+    return 0.0; // Default value if no data
   }
 
   @override
@@ -145,106 +203,131 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    return Scaffold(
-      backgroundColor: Colors.blue[100],
-      body: CustomRefreshIndicator(
-        onRefresh: _refreshWeather,
-        builder: (BuildContext context, Widget child, IndicatorController controller) {
-          return Stack(
-            alignment: Alignment.topCenter,
-            children: <Widget>[
-              if (controller.isDragging || controller.value > 0)
-                Positioned(
-                  top: 40 * controller.value,
-                  child: Opacity(
-                    opacity: controller.value.clamp(0.0, 1.0),
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Circular loading indicator if refreshing
-                          if (isRefreshing)
-                            const CircularProgressIndicator(
-                              strokeWidth: 2.0,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                            ),
-                          // Water drop icon always visible
-                          Opacity(
-                            opacity: isRefreshing ? 0.5 : 1.0, // Slightly transparent when loading
-                            child: const Icon(
-                              Icons.water_drop,
-                              color: Colors.blue,
-                            ),
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: Colors.transparent, // Make the AppBar transparent
+      elevation: 0,  // Remove shadow
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "Sol",
+            style: TextStyle(
+              fontSize: screenWidth * 0.08,
+              color: Colors.blue[900],
+            ),
+          ),
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: screenWidth * 0.07,
+              maxHeight: screenHeight * 0.1,
+            ),
+            child: Image.asset(
+              'images/a_logo.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+          Text(
+            'ce RiverWatch',
+            style: TextStyle(
+              fontSize: screenWidth * 0.08,
+              color: Colors.blue[900],
+            ),
+          ),
+        ],
+      ),
+    ),
+  backgroundColor: Colors.blue[100],
+  body: _connectivityResult.isEmpty || _connectivityResult.contains(ConnectivityResult.none)
+          ? const Center(
+              child: Text(
+                'Please turn on your internet',
+                style: TextStyle(fontSize: 20, color: Colors.red),
+              ),
+            )
+
+    // If internet is available, proceed with the content
+    : CustomRefreshIndicator(
+      onRefresh: _refreshWeatherandWaterLevel,
+      builder: (BuildContext context, Widget child, IndicatorController controller) {
+        return Stack(
+          alignment: Alignment.topCenter,
+          children: <Widget>[
+            if (controller.isDragging || controller.value > 0)
+              Positioned(
+                top: 40 * controller.value,
+                child: Opacity(
+                  opacity: controller.value.clamp(0.0, 1.0),
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Circular loading indicator if refreshing
+                        if (isRefreshing)
+                          const CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                           ),
-                        ],
-                      ),
+                        // Water drop icon always visible
+                        Opacity(
+                          opacity: isRefreshing ? 0.5 : 1.0, // Slightly transparent when loading
+                          child: const Icon(
+                            Icons.water_drop,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              Transform.translate(
-                offset: Offset(0, 70 * controller.value),
-                child: child,
               ),
-            ],
-          );
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Sol', style: TextStyle(fontSize: screenWidth * 0.08, color: Colors.blue[900])),
-                  Container(
-                    constraints: BoxConstraints(
-                      maxWidth: screenWidth * 0.07,
-                      maxHeight: screenHeight * 0.1,
-                    ),
-                    child: Image.asset(
-                      'images/a_logo.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  Text('ce RiverWatch', style: TextStyle(fontSize: screenWidth * 0.08, color: Colors.blue[900])),
-                ],
-              ),
-              const SizedBox(height: 20),
-              FutureBuilder<WeatherData>(
-                future: weatherData,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (snapshot.hasData) {
-                    final data = snapshot.data!;
-                    return Column(
-                      children: [
-                        WeatherBox(
-                          date: DateTime.now().toLocal().toString().split(' ')[0],
-                          temperature: data.current.temperature,
-                          condition: data.current.condition,
-                          location: data.location,
-                          iconUrl: data.current.iconUrl,
-                        ),
-                        const SizedBox(height: 20),
-                        HourlyForecast(hourlyWeather: data.hourly),
-                      ],
-                    );
-                  } else {
-                    // You can show a placeholder or last known data here
-                    return const Center(child: Text('Fetching weather data...')); // Optional message
-                  }
-                },
-              ),
+            Transform.translate(
+              offset: Offset(0, 70 * controller.value),
+              child: child,
+            ),
+          ],
+        );
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Weather Data Section (FutureBuilder)
+            FutureBuilder<WeatherData>(
+              future: weatherData,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (snapshot.hasData) {
+                  final data = snapshot.data!;
+                  return Column(
+                    children: [
+                      WeatherBox(
+                        date: DateTime.now().toLocal().toString().split(' ')[0],
+                        temperature: data.current.temperature,
+                        condition: data.current.condition,
+                        location: data.location,
+                        iconUrl: data.current.iconUrl,
+                      ),
+                      const SizedBox(height: 20),
+                      HourlyForecast(hourlyWeather: data.hourly),
+                    ],
+                  );
+                } else {
+                  // Show a placeholder while loading
+                  return const Center(child: Text('Fetching weather data...')); // Optional message
+                }
+              },
+            ),
               const SizedBox(height: 20),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,9 +347,21 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
                           ),
                         ),
                         const SizedBox(height: 10),
-                        const DigitalWaterGauge(
-                          currentLevel: 5.5,
-                          maxLevel: 9.0,
+                        FutureBuilder<double>(
+                          future: waterLevelData, // Use the Future<double> here
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return const Center(child: Text('Error fetching water level'));
+                            }
+                            if (!snapshot.hasData) {
+                              return const Center(child: Text('Fetching water level...'));
+                            }
+
+                            return DigitalWaterGauge(
+                              currentLevel: snapshot.data!, // Use the data from the Future
+                              maxLevel: 9.0,
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -290,18 +385,17 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
                         Legends(color: Colors.green, text: 'Normal \n6.00 MASL', fontSize: screenWidth * 0.03),
                         Legends(color: Colors.yellow, text: 'Alert \n6.20 MASL', fontSize: screenWidth * 0.03),
                         Legends(color: Colors.red, text: 'Critical \n7.00 MASL', fontSize: screenWidth * 0.03),
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
+            ),
+          ));
+        }
   }
-}
 
 class WeatherBox extends StatelessWidget {
   final String date;

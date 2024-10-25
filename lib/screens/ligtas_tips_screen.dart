@@ -10,7 +10,44 @@ class LigtasTips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
+      appBar: AppBar(
+      backgroundColor: Colors.transparent, // Make the AppBar transparent
+      elevation: 0,  // Remove shadow
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "Sol",
+            style: TextStyle(
+              fontSize: screenWidth * 0.08,
+              color: Colors.blue[900],
+            ),
+          ),
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: screenWidth * 0.07,
+              maxHeight: screenHeight * 0.1,
+            ),
+            child: Image.asset(
+              'images/a_logo.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+          Text(
+            'ce RiverWatch',
+            style: TextStyle(
+              fontSize: screenWidth * 0.08,
+              color: Colors.blue[900],
+            ),
+          ),
+        ],
+      ),
+    ),
       backgroundColor: Colors.blue[100],
       body: Stack(
         children: [

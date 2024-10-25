@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "20229347350",
+    "firebase_url": "https://laravel-auth-a9af8-default-rtdb.firebaseio.com",
+    "project_id": "laravel-auth-a9af8",
+    "storage_bucket": "laravel-auth-a9af8.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20229347350:android:06e097be921ef3871bfd37",
+        "android_client_info": {
+          "package_name": "com.example.solace_mobile_frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDxw3b1kOa3NHn66PAVzT14obS4k21qnY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,12 +9,12 @@ Future<WeatherData> fetchWeather() async {
   
   // Fetch current weather
   final currentResponse = await http.get(Uri.parse(
-    'https://api.openweathermap.org/data/2.5/weather?lat=${position.latitude}&lon=${position.longitude}&appid=90b2efa3381c73427b57a13d741659b7',
+    'https://api.openweathermap.org/data/2.5/weather?lat=${position.latitude}&lon=${position.longitude}&appid=1257c323501fde9df99b778ff7b50408',
   ));
   
   // Fetch hourly forecast
   final hourlyResponse = await http.get(Uri.parse(
-    'https://api.openweathermap.org/data/2.5/forecast?lat=${position.latitude}&lon=${position.longitude}&appid=90b2efa3381c73427b57a13d741659b7',
+    'https://api.openweathermap.org/data/2.5/forecast?lat=${position.latitude}&lon=${position.longitude}&appid=1257c323501fde9df99b778ff7b50408',
   ));
   
   if (currentResponse.statusCode == 200 && hourlyResponse.statusCode == 200) {
