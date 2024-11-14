@@ -28,7 +28,7 @@ android {
         applicationId = "com.example.solace_mobile_frontend"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -56,6 +56,12 @@ dependencies{
 
     // Add the Firebase Analytics SDK
     implementation 'com.google.firebase:firebase-analytics-ktx'
+
+    // For Firebase Storage
+    implementation 'com.google.firebase:firebase-storage-ktx'
+
+    implementation 'com.google.android.gms:play-services-maps:17.0.1'
+    implementation 'com.google.android.gms:play-services-location:17.0.0'
 }
 
 // Make sure this is at the bottom of the file to apply the Google services plugin

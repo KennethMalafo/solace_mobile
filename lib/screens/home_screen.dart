@@ -1,16 +1,19 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
+import 'package:solace_mobile_frontend/screens/user_disaster_reports.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
+import 'notification_page.dart';
 import 'package:solace_mobile_frontend/screens/ligtas_tips_screen.dart';
 import 'package:solace_mobile_frontend/screens/evacuation_location.dart';
-import 'package:solace_mobile_frontend/screens/news.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/weather_api.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/weather_model.dart';
+import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/firebase_api.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,19 +25,28 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;  // This holds the index of the current tab
 
-  // Screens for each tab in BottomNavigationBar
-  final List<Widget> _screens = [
-    const HomeContent(),
-    const LigtasTips(),
-    const EvacuationLocation(),
-    const WaterLevelPredictionWidget(),
-  ];
-
   // This function will handle the tab change
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;  // Change the current index
     });
+  }
+
+  // Method to switch directly to the Evacuation location tab
+  void _goToEvacuationLocation() {
+    setState(() {
+      _currentIndex = 2;  // Switch to the Evacuation location tab (index 2)
+    });
+  }
+
+  // Dynamically generate the screens list
+  List<Widget> get _screens {
+    return [
+      HomeContent(onShowEvacuationLocation: _goToEvacuationLocation), // Pass the callback here
+      const LigtasTips(),
+      const EvacuationLocation(),
+      const ImageUploadScreen(),
+    ];
   }
 
   @override
@@ -85,8 +97,8 @@ class HomeScreenState extends State<HomeScreen> {
                     outlinedIcon: Icons.map_outlined,
                   ),
                   BarItem(
-                    filledIcon: Icons.newspaper_rounded,
-                    outlinedIcon: Icons.newspaper_outlined,
+                    filledIcon: Icons.add_a_photo,
+                    outlinedIcon: Icons.add_a_photo_outlined,
                   ),
                 ],
               ),
@@ -99,7 +111,8 @@ class HomeScreenState extends State<HomeScreen> {
 }
 
 class HomeContent extends StatefulWidget {
-  const HomeContent({super.key});
+  final VoidCallback onShowEvacuationLocation;
+  const HomeContent({super.key, required this.onShowEvacuationLocation});
 
   @override
   HomeContentState createState() => HomeContentState();
@@ -163,28 +176,36 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
   }
 
   Future<void> _refreshWeatherandWaterLevel() async {
-    setState(() {
-      isRefreshing = true; // Set refreshing to true when the pull down occurs
-    });
+  setState(() {
+    isRefreshing = true; // Set refreshing to true when the pull-down occurs
+  });
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Refresh both weather and water level data
+  try {
+    // Attempt to fetch new weather and water level data
     weatherData = fetchWeather();
-    waterLevelData = fetchWaterLevel(); // Fetch the latest water level
-
+    waterLevelData = fetchWaterLevel();
+  } catch (e) {
+    // Show an error message or handle the error if fetching fails
+    if (kDebugMode) {
+      print("Failed to refresh data: $e");
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Failed to refresh data. Please check your connection.")),
+    );
+  } finally {
+    // Reset refreshing state after attempt to fetch
     setState(() {
-      isRefreshing = false; // Reset refreshing to false after fetching
+      isRefreshing = false;
     });
   }
+}
 
   Future<double> fetchWaterLevel() async {
-    // Logic to fetch the water level from Firestore
+  try {
     var snapshot = await FirebaseFirestore.instance
         .collection('water_level')
-        .orderBy('date', descending: true) // Sort by date in descending order
-        .limit(1) // Get only the latest document
+        .orderBy('date', descending: true)
+        .limit(1)
         .get();
 
     if (snapshot.docs.isNotEmpty) {
@@ -192,14 +213,37 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
       var data = latestDocument.data();
       double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
       currentWaterLevel += 4.0; // Add 4 to the fetched water level
-      return currentWaterLevel; // Return the water level
+      return currentWaterLevel;
     }
+    return 0.0;
+  } catch (e) {
+    if (kDebugMode) {
+      print("Error fetching water level data: $e");
+    }
+    throw Exception("Failed to fetch water level due to a connection issue.");
+  }
+}
 
-    return 0.0; // Default value if no data
+  Stream<double> waterLevelStream() {
+    return FirebaseFirestore.instance
+        .collection('water_level')
+        .orderBy('date', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+          if (snapshot.docs.isNotEmpty) {
+            var latestDocument = snapshot.docs.first;
+            var data = latestDocument.data();
+            double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
+            return currentWaterLevel + 4.0; // Add 4 to the fetched water level
+          }
+          return 0.0;
+        });
   }
 
   @override
   Widget build(BuildContext context) {
+    FirebaseApi().initNotification(context); 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -237,6 +281,19 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
           ),
         ],
       ),
+      actions: [
+        IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationPage(title: "No Title", body: "No new notifications"),
+                ),
+              );
+            },
+          ),
+      ],
     ),
   backgroundColor: Colors.blue[100],
   body: _connectivityResult.isEmpty || _connectivityResult.contains(ConnectivityResult.none)
@@ -256,7 +313,7 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
           children: <Widget>[
             if (controller.isDragging || controller.value > 0)
               Positioned(
-                top: 40 * controller.value,
+                top: 20 * controller.value,
                 child: Opacity(
                   opacity: controller.value.clamp(0.0, 1.0),
                   child: Container(
@@ -305,26 +362,39 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
             FutureBuilder<WeatherData>(
               future: weatherData,
               builder: (context, snapshot) {
+                // Handle errors when fetching data
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (snapshot.hasData) {
-                  final data = snapshot.data!;
-                  return Column(
-                    children: [
-                      WeatherBox(
-                        date: DateTime.now().toLocal().toString().split(' ')[0],
-                        temperature: data.current.temperature,
-                        condition: data.current.condition,
-                        location: data.location,
-                        iconUrl: data.current.iconUrl,
-                      ),
-                      const SizedBox(height: 20),
-                      HourlyForecast(hourlyWeather: data.hourly),
-                    ],
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
                   );
+                } else if (snapshot.connectionState == ConnectionState.waiting) {
+                  // Show loading message or placeholder while waiting for data
+                  return const Center(child: Text('Fetching weather data, Please wait...'));
+                } else if (snapshot.hasData) {
+                  try {
+                    final data = snapshot.data!;
+                    return Column(
+                      children: [
+                        WeatherBox(
+                          date: DateTime.now().toLocal().toString().split(' ')[0],
+                          temperature: data.current.temperature,
+                          condition: data.current.condition,
+                          location: data.location,
+                          iconUrl: data.current.iconUrl,
+                        ),
+                        const SizedBox(height: 20),
+                        HourlyForecast(hourlyWeather: data.hourly),
+                      ],
+                    );
+                  } catch (e) {
+                    // Handle any errors that may happen while accessing data
+                    return Center(
+                      child: Text('Error processing weather data. Please check your internet connection: $e'),
+                    );
+                  }
                 } else {
-                  // Show a placeholder while loading
-                  return const Center(child: Text('Fetching weather data...')); // Optional message
+                  // Fallback if no data is available
+                  return const Center(child: Text('No weather data available.'));
                 }
               },
             ),
@@ -346,20 +416,69 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        FutureBuilder<double>(
-                          future: waterLevelData, // Use the Future<double> here
+                        const SizedBox(height: 20),
+                        StreamBuilder<double>(
+                          stream: waterLevelStream(), // Use the Future<double> here
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
                               return const Center(child: Text('Error fetching water level'));
                             }
                             if (!snapshot.hasData) {
-                              return const Center(child: Text('Fetching water level...'));
+                              return const Center(child: Text('Fetching water level, Please wait...'));
                             }
 
-                            return DigitalWaterGauge(
-                              currentLevel: snapshot.data!, // Use the data from the Future
-                              maxLevel: 9.0,
+                            final currentLevel = snapshot.data!;
+                            bool isAlert = currentLevel >= 6.20 && currentLevel < 7.00;
+                            bool isCritical = currentLevel >= 7.00;
+
+                            return Column(
+                              children: [
+                                DigitalWaterGauge(
+                                  currentLevel: currentLevel,
+                                  maxLevel: 9.0,
+                                ),
+                                if (isAlert || isCritical) const SizedBox(height: 20),
+                                if (isAlert || isCritical)
+                                  Column(
+                                    children: [
+                                      Text(
+                                        isAlert
+                                            ? 'Alert Water Level Reached!'
+                                            : 'Critical: High Water Level!',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.05,
+                                          color: isAlert ? Colors.orange : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: isAlert
+                                                  ? [Colors.orange, Colors.orange[300]!]
+                                                  : [Colors.redAccent, Colors.red[300]!], // Apply gradient based on the status
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: ElevatedButton(
+                                            onPressed: widget.onShowEvacuationLocation,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.transparent, // Make background transparent to show the gradient
+                                              shadowColor: Colors.transparent,
+                                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                            ),
+                                            child: const Text(
+                                              "View Evacuation Routes",
+                                              style: TextStyle(color: Colors.white), 
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                              ],
                             );
                           },
                         ),
@@ -382,20 +501,21 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
                             ),
                           ),
                         ),
-                        Legends(color: Colors.green, text: 'Normal \n6.00 MASL', fontSize: screenWidth * 0.03),
-                        Legends(color: Colors.yellow, text: 'Alert \n6.20 MASL', fontSize: screenWidth * 0.03),
+                        Legends(color: Colors.green, text: 'Normal \n6.19 MASL', fontSize: screenWidth * 0.03),
+                        Legends(color: Colors.yellow, text: 'Alert \n6.99 MASL', fontSize: screenWidth * 0.03),
                         Legends(color: Colors.red, text: 'Critical \n7.00 MASL', fontSize: screenWidth * 0.03),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ));
-        }
+            ],
+          ),
+        ),
+      ),
+    );
   }
+}
 
 class WeatherBox extends StatelessWidget {
   final String date;
@@ -697,9 +817,9 @@ class DigitalWaterGaugeState extends State<DigitalWaterGauge> with SingleTickerP
 
   // Function to determine the water status based on the current level
   String _getStatusText(double level) {
-    if (level <= 6.0) {
+    if (level < 6.2) {
       return 'Normal Level: The water level is stable.';
-    } else if (level <= 6.2) {
+    } else if (level < 7.0) {
       return 'Alert Level: Water level is slightly elevated.';
     } else {
       return 'Critical Level: Water level is dangerously high!';
@@ -758,21 +878,37 @@ class WavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double waveHeight = (currentLevel / maxLevel) * size.height;
+    final double backgroundWaveHeight = waveHeight * 1.0; // Slightly lower background wave
 
-    // Gradient color based on current level
+    // Gradient color for the current (front) wave
     final gradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: _getGradientColors(currentLevel),
     );
 
-    // Define a rect to paint the gradient
-    final rect = Rect.fromLTWH(0, size.height - waveHeight, size.width, size.height);
+    // Gradient color for the background wave (lighter color)
+    final backgroundGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: _getBackgroundGradientColors(currentLevel),
+    );
 
-    Paint waterPaint = Paint()
-      ..shader = gradient.createShader(rect);
+    // Define rects to paint the gradients
+    final rectFrontWave = Rect.fromLTWH(0, size.height - waveHeight, size.width, size.height);
+    final rectBackgroundWave = Rect.fromLTWH(0, size.height - backgroundWaveHeight, size.width, size.height);
 
-    Path wavePath = Path();
+    Paint waterPaintFront = Paint()
+      ..shader = gradient.createShader(rectFrontWave);
+
+    Paint waterPaintBackground = Paint()
+      ..shader = backgroundGradient.createShader(rectBackgroundWave);
+
+    // Path for the front wave
+    Path wavePathFront = Path();
+
+    // Path for the background wave
+    Path wavePathBackground = Path();
 
     // Keep wave frequency constant
     double waveFrequency = size.width / 1;
@@ -780,27 +916,44 @@ class WavePainter extends CustomPainter {
     // Calculate wave speed based on the current level
     double waveSpeed = _getWaveSpeed(currentLevel);
 
-    // Create the wave path
+    // Lower the front wave by an offset (e.g., 20 pixels)
+    double frontWaveOffset = -40.0;
+
+    // Create the wave path for the front wave
     for (double x = 0; x <= size.width; x++) {
-      double y = _getWaveAmplitude(currentLevel) * sin((x / waveFrequency * 2 * pi) + (animation.value * waveSpeed * 2 * pi));
-      wavePath.lineTo(x, size.height - waveHeight + y);
+      double yFront = _getWaveAmplitude(currentLevel) * sin((x / waveFrequency * 2 * pi) + (animation.value * waveSpeed * 2 * pi));
+      wavePathFront.lineTo(x, size.height - waveHeight + yFront - frontWaveOffset); // Lowering front wave
     }
 
-    wavePath.lineTo(size.width, size.height);
-    wavePath.lineTo(0, size.height);
-    wavePath.close();
+    // Create the wave path for the background wave (ensure alignment with front wave)
+    for (double x = 0; x <= size.width; x++) {
+      double yBackground = _getWaveAmplitude(currentLevel) * sin((x / waveFrequency * 2 * pi) + (animation.value * waveSpeed * 2 * pi) + pi); // Offset to make background wave appear behind
+      wavePathBackground.lineTo(x, size.height - backgroundWaveHeight + yBackground);
+    }
 
-    canvas.drawPath(wavePath, waterPaint);
+    // Close the paths
+    wavePathFront.lineTo(size.width, size.height);
+    wavePathFront.lineTo(0, size.height);
+    wavePathFront.close();
+
+    wavePathBackground.lineTo(size.width, size.height);
+    wavePathBackground.lineTo(0, size.height);
+    wavePathBackground.close();
+
+    // Draw the background wave first
+    canvas.drawPath(wavePathBackground, waterPaintBackground);
+
+    // Draw the front wave
+    canvas.drawPath(wavePathFront, waterPaintFront);
 
     // Draw the status text and icon
     _drawStatusTextAndIcon(canvas, size);
   }
 
-  // Draw the status text and corresponding icon
   void _drawStatusTextAndIcon(Canvas canvas, Size size) {
     String statusText = _getStatusText(currentLevel);
     IconData statusIcon = _getStatusIcon(currentLevel); // Get corresponding icon
-    
+
     // TextPainter for status text
     TextPainter textPainter = TextPainter(
       text: TextSpan(
@@ -809,7 +962,7 @@ class WavePainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     );
-    
+
     textPainter.layout(minWidth: 0, maxWidth: size.width);
     textPainter.paint(canvas, Offset(10, size.height - 50));
 
@@ -832,9 +985,9 @@ class WavePainter extends CustomPainter {
 
   // Function to determine the water status based on the current level
   String _getStatusText(double level) {
-    if (level <= 6.0) {
+    if (level < 6.2) {
       return 'Normal Level';
-    } else if (level <= 6.2) {
+    } else if (level < 7.0) {
       return 'Alert Level';
     } else {
       return 'Critical Level';
@@ -843,9 +996,9 @@ class WavePainter extends CustomPainter {
 
   // Get the icon based on water level
   IconData _getStatusIcon(double level) {
-    if (level <= 6.0) {
+    if (level < 6.2) {
       return Icons.check_circle; // Icon for normal
-    } else if (level <= 6.2) {
+    } else if (level < 7.0) {
       return Icons.warning; // Icon for alert
     } else {
       return Icons.dangerous; // Icon for critical
@@ -854,34 +1007,45 @@ class WavePainter extends CustomPainter {
 
   // Function to get dynamic wave amplitude based on the current level
   double _getWaveAmplitude(double level) {
-    if (level <= 6.0) {
+    if (level < 6.2) {
       return 10; // Amplitude for normal level
-    } else if (level <= 6.2) {
-      return 15; // Amplitude for alert level
+    } else if (level < 7.0) {
+      return 12; // Amplitude for alert level
     } else {
-      return 20; // Amplitude for critical level
+      return 11; // Amplitude for critical level
     }
   }
 
   // Function to get gradient colors based on the current level
   List<Color> _getGradientColors(double level) {
-    if (level <= 6.0) {
+    if (level < 6.2) {
       return [Colors.greenAccent, Colors.green[300]!]; // Gradient for normal level
-    } else if (level <= 6.2) {
+    } else if (level < 7.0) {
       return [Colors.yellowAccent, Colors.yellow[300]!]; // Gradient for alert level
     } else {
       return [Colors.redAccent, Colors.red[300]!]; // Gradient for critical level
     }
   }
 
+  // Function to get the gradient colors for the background wave
+  List<Color> _getBackgroundGradientColors(double level) {
+    if (level < 6.2) {
+      return [Colors.green[300]!.withOpacity(0.3), Colors.green[200]!.withOpacity(0.3)]; // Lighter gradient for normal level
+    } else if (level < 7.0) {
+      return [Colors.yellow[300]!.withOpacity(0.3), Colors.yellow[200]!.withOpacity(0.3)]; // Lighter gradient for alert level
+    } else {
+      return [Colors.red[300]!.withOpacity(0.3), Colors.red[200]!.withOpacity(0.3)]; // Lighter gradient for critical level
+    }
+  }
+
   // Function to get wave speed based on the current level
   double _getWaveSpeed(double level) {
-    if (level <= 6.0) {
-      return 3.0; // Slow wave speed for normal level
-    } else if (level <= 6.2) {
-      return 5.0; // Medium speed for alert level
+    if (level < 6.2) {
+      return 2.0; // Slow wave speed for normal level
+    } else if (level < 7.0) {
+      return 3.0; // Medium speed for alert level
     } else {
-      return 7.0; // Fast speed for critical level
+      return 4.0; // Fast speed for critical level
     }
   }
 
