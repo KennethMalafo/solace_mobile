@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/image_picker_screen.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/firebase_service.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/cloudinary_upload.dart';
@@ -30,6 +31,16 @@ Future<Position> getCurrentLocation() async {
   return await Geolocator.getCurrentPosition();
 }
 
+// Request storage permission method
+Future<bool> requestStoragePermission() async {
+  PermissionStatus status = await Permission.storage.request();
+  if (status.isGranted) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 class ImageUploadScreen extends StatefulWidget {
   const ImageUploadScreen({super.key});
 
@@ -49,6 +60,20 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
     setState(() {
       _isPickingImage = true;
     });
+
+    // Check and request storage permission
+    bool hasPermission = await requestStoragePermission();
+    if (!hasPermission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Storage permission denied')),
+        );
+      }
+      setState(() {
+        _isPickingImage = false;
+      });
+      return;
+    }
 
     try {
       if (_image != null) {
@@ -85,9 +110,11 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error selecting image')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error selecting image')),
+        );
+      }
     } finally {
       setState(() {
         _isPickingImage = false;
@@ -125,13 +152,17 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
         _message,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data uploaded successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data uploaded successfully')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error uploading data')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error uploading data')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false; // Stop loading
