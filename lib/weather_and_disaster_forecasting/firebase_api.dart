@@ -26,6 +26,7 @@ class FirebaseApi {
     final fcmToken = await _firebaseMessaging.getToken();
     if (fcmToken != null) {
       await saveTokenToFirestore(fcmToken);
+      await fetchAndPrintTokenFromFirestore();
     }
 
     // Listen to foreground messages
@@ -63,6 +64,36 @@ class FirebaseApi {
       }
     }
   }
+
+  Future<void> fetchAndPrintTokenFromFirestore() async {
+  try {
+    // Get the current device's FCM token
+    final fcmToken = await _firebaseMessaging.getToken();
+
+    if (fcmToken != null) {
+      final snapshot = await _firestore.collection('device_tokens').doc(fcmToken).get();
+
+      if (snapshot.exists) {
+        final token = snapshot.data()?['FCMTOKEN'];
+        if (kDebugMode) {
+          print('Fetched FCM Token for this device: $token');
+        }
+      } else {
+        if (kDebugMode) {
+          print('No token found for this device in Firestore.');
+        }
+      }
+    } else {
+      if (kDebugMode) {
+        print('Unable to fetch FCM token for this device.');
+      }
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error fetching token for this device from Firestore: $e');
+    }
+  }
+}
 
     void _navigateToNotificationPage(BuildContext context, String? title, String? body) {
     if (!_isNotificationPageOpen) {
