@@ -4,6 +4,7 @@ import 'package:solace_mobile_frontend/tipspages/barangay_evacuation_guide.dart'
 import 'package:solace_mobile_frontend/tipspages/bagyo_at_baha.dart';
 import 'package:solace_mobile_frontend/tipspages/lindol.dart';
 import 'package:solace_mobile_frontend/tipspages/ldrrmc.dart';
+import 'package:solace_mobile_frontend/tipspages/sinocalan_river_origin.dart';
 
 class LigtasTips extends StatelessWidget {
   const LigtasTips({super.key});
@@ -110,6 +111,17 @@ class LigtasTips extends StatelessWidget {
                     Icons.groups,
                     [Colors.orange[300]!, Colors.deepOrangeAccent],
                   ),
+                  const SizedBox(height: 20),
+
+                  buildSection(
+                  context,
+                  'Sinocalan River Origin',
+                  'Learn about the origin of the Sinocalan River and how this location affects the river\'s water levels.',
+                  const RiverOriginMap(),
+                  Icons.place,
+                  [Colors.lightBlueAccent[100]!, Colors.blueGrey[400]!],
+                ),
+
                 ],
               ),
             ),

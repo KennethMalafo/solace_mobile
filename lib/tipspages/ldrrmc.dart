@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LDRRMC extends StatelessWidget {
   const LDRRMC({super.key});
+
+  final String facebookUrl = 'https://www.facebook.com/Sta.BarbaraMdrrmo2419';
+
+  Future<void> _launchFacebookPage() async {
+    final Uri url = Uri.parse(facebookUrl);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch $facebookUrl');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +57,16 @@ class LDRRMC extends StatelessWidget {
                       'Please Like our Facebook Page:',
                       style: TextStyle(fontSize: 16),
                     ),
-                    const Text(
-                      'StaBarbaraMdrrmo',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                    GestureDetector(
+                      onTap: _launchFacebookPage,
+                      child: const Text(
+                        'StaBarbaraMdrrmo',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -61,7 +75,7 @@ class LDRRMC extends StatelessWidget {
                       style: TextStyle(fontSize: 16),
                     ),
                     const Text(
-                      'santabarbara_idrrmc@yahoo.com',
+                      'santabarbara_ldrrmc@yahoo.com.ph',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
