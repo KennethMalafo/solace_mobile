@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/storage_permission.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/image_picker_screen.dart';
-import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/firebase_service.dart';
+import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/saving_user_reports_to_firestore.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/cloudinary_upload.dart';
 
 // Get current location method
@@ -135,7 +135,7 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
     try {
       Position position = await getCurrentLocation();
       String imageUrl = await uploadImageToCloudinary(_image!);
-      await FirebaseService().saveDataToFirestore(
+      await SavingUserReports().saveDataToFirestore(
         imageUrl,
         position.latitude,
         position.longitude,

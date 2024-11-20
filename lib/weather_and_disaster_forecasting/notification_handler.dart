@@ -15,7 +15,7 @@ Future<void> handleBackgroundMessage(RemoteMessage message) async {
   }
 }
 
-class FirebaseApi {
+class NotificationHandler {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isNotificationPageOpen = false; // Track if NotificationPage is open

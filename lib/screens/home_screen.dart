@@ -13,7 +13,7 @@ import 'package:solace_mobile_frontend/screens/ligtas_tips_screen.dart';
 import 'package:solace_mobile_frontend/screens/evacuation_location.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/weather_api.dart';
 import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/weather_model.dart';
-import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/firebase_api.dart';
+import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/notification_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -243,7 +243,7 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
 
   @override
   Widget build(BuildContext context) {
-    FirebaseApi().initNotification(context); 
+    NotificationHandler().initNotification(context); 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 

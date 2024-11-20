@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-class FirebaseService {
+class SavingUserReports {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Method to save data (image URL, message, and location) to Firestore
