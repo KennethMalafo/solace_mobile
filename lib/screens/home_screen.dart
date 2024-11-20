@@ -212,7 +212,7 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
       var latestDocument = snapshot.docs.first;
       var data = latestDocument.data();
       double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
-      currentWaterLevel += 4.0; // Add 4 to the fetched water level
+      //currentWaterLevel; // Add 4 to the fetched water level
       return currentWaterLevel;
     }
     return 0.0;
@@ -235,7 +235,7 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
             var latestDocument = snapshot.docs.first;
             var data = latestDocument.data();
             double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
-            return currentWaterLevel + 4.0; // Add 4 to the fetched water level
+            return currentWaterLevel; //+ 4.0; // Add 4 to the fetched water level
           }
           return 0.0;
         });
@@ -877,38 +877,29 @@ class WavePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double waveHeight = (currentLevel / maxLevel) * size.height;
-    final double backgroundWaveHeight = waveHeight * 1.0; // Slightly lower background wave
+    // If the water level is 0, skip the wave drawing
+    if (currentLevel == 0) {
+      // Just draw the status text and icon without the wave
+      _drawStatusTextAndIcon(canvas, size);
+      return; // Early exit to avoid drawing the wave
+    }
 
-    // Gradient color for the current (front) wave
+    final double waveHeight = (currentLevel / maxLevel) * size.height;
+
+    // Gradient color based on current level
     final gradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: _getGradientColors(currentLevel),
     );
 
-    // Gradient color for the background wave (lighter color)
-    final backgroundGradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: _getBackgroundGradientColors(currentLevel),
-    );
+    // Define a rect to paint the gradient
+    final rect = Rect.fromLTWH(0, size.height - waveHeight, size.width, size.height);
 
-    // Define rects to paint the gradients
-    final rectFrontWave = Rect.fromLTWH(0, size.height - waveHeight, size.width, size.height);
-    final rectBackgroundWave = Rect.fromLTWH(0, size.height - backgroundWaveHeight, size.width, size.height);
+    Paint waterPaint = Paint()
+      ..shader = gradient.createShader(rect);
 
-    Paint waterPaintFront = Paint()
-      ..shader = gradient.createShader(rectFrontWave);
-
-    Paint waterPaintBackground = Paint()
-      ..shader = backgroundGradient.createShader(rectBackgroundWave);
-
-    // Path for the front wave
-    Path wavePathFront = Path();
-
-    // Path for the background wave
-    Path wavePathBackground = Path();
+    Path wavePath = Path();
 
     // Keep wave frequency constant
     double waveFrequency = size.width / 1;
@@ -916,44 +907,27 @@ class WavePainter extends CustomPainter {
     // Calculate wave speed based on the current level
     double waveSpeed = _getWaveSpeed(currentLevel);
 
-    // Lower the front wave by an offset (e.g., 20 pixels)
-    double frontWaveOffset = -40.0;
-
-    // Create the wave path for the front wave
+    // Create the wave path
     for (double x = 0; x <= size.width; x++) {
-      double yFront = _getWaveAmplitude(currentLevel) * sin((x / waveFrequency * 2 * pi) + (animation.value * waveSpeed * 2 * pi));
-      wavePathFront.lineTo(x, size.height - waveHeight + yFront - frontWaveOffset); // Lowering front wave
+      double y = _getWaveAmplitude(currentLevel) * sin((x / waveFrequency * 2 * pi) + (animation.value * waveSpeed * 2 * pi));
+      wavePath.lineTo(x, size.height - waveHeight + y);
     }
 
-    // Create the wave path for the background wave (ensure alignment with front wave)
-    for (double x = 0; x <= size.width; x++) {
-      double yBackground = _getWaveAmplitude(currentLevel) * sin((x / waveFrequency * 2 * pi) + (animation.value * waveSpeed * 2 * pi) + pi); // Offset to make background wave appear behind
-      wavePathBackground.lineTo(x, size.height - backgroundWaveHeight + yBackground);
-    }
+    wavePath.lineTo(size.width, size.height);
+    wavePath.lineTo(0, size.height);
+    wavePath.close();
 
-    // Close the paths
-    wavePathFront.lineTo(size.width, size.height);
-    wavePathFront.lineTo(0, size.height);
-    wavePathFront.close();
+    canvas.drawPath(wavePath, waterPaint);
 
-    wavePathBackground.lineTo(size.width, size.height);
-    wavePathBackground.lineTo(0, size.height);
-    wavePathBackground.close();
-
-    // Draw the background wave first
-    canvas.drawPath(wavePathBackground, waterPaintBackground);
-
-    // Draw the front wave
-    canvas.drawPath(wavePathFront, waterPaintFront);
-
-    // Draw the status text and icon
+    // Draw the status text and icon (still drawn even if currentLevel is 0)
     _drawStatusTextAndIcon(canvas, size);
   }
 
+  // Draw the status text and corresponding icon
   void _drawStatusTextAndIcon(Canvas canvas, Size size) {
     String statusText = _getStatusText(currentLevel);
     IconData statusIcon = _getStatusIcon(currentLevel); // Get corresponding icon
-
+    
     // TextPainter for status text
     TextPainter textPainter = TextPainter(
       text: TextSpan(
@@ -962,7 +936,7 @@ class WavePainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     );
-
+    
     textPainter.layout(minWidth: 0, maxWidth: size.width);
     textPainter.paint(canvas, Offset(10, size.height - 50));
 
@@ -1010,9 +984,9 @@ class WavePainter extends CustomPainter {
     if (level < 6.2) {
       return 10; // Amplitude for normal level
     } else if (level < 7.0) {
-      return 12; // Amplitude for alert level
+      return 11; // Amplitude for alert level
     } else {
-      return 11; // Amplitude for critical level
+      return 12; // Amplitude for critical level
     }
   }
 
@@ -1024,17 +998,6 @@ class WavePainter extends CustomPainter {
       return [Colors.yellowAccent, Colors.yellow[300]!]; // Gradient for alert level
     } else {
       return [Colors.redAccent, Colors.red[300]!]; // Gradient for critical level
-    }
-  }
-
-  // Function to get the gradient colors for the background wave
-  List<Color> _getBackgroundGradientColors(double level) {
-    if (level < 6.2) {
-      return [Colors.green[300]!.withOpacity(0.3), Colors.green[200]!.withOpacity(0.3)]; // Lighter gradient for normal level
-    } else if (level < 7.0) {
-      return [Colors.yellow[300]!.withOpacity(0.3), Colors.yellow[200]!.withOpacity(0.3)]; // Lighter gradient for alert level
-    } else {
-      return [Colors.red[300]!.withOpacity(0.3), Colors.red[200]!.withOpacity(0.3)]; // Lighter gradient for critical level
     }
   }
 

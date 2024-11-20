@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:solace_mobile_frontend/screens/notification_page.dart';
 
 Future<void> handleBackgroundMessage(RemoteMessage message) async {
@@ -19,14 +21,36 @@ class FirebaseApi {
   bool _isNotificationPageOpen = false; // Track if NotificationPage is open
 
   Future<void> initNotification(BuildContext context) async {
-    // Request permission for notifications (important for iOS)
+  if (Platform.isAndroid) {
+    // Check Android version
+    if (Platform.version.contains("13") || int.tryParse(Platform.version.split('.')[0])! >= 13) {
+      // For Android 13+, request notification permission
+      final permissionStatus = await Permission.notification.status;
+
+      if (permissionStatus.isDenied) {
+        final requestStatus = await Permission.notification.request();
+        if (!requestStatus.isGranted) {
+          if (kDebugMode) {
+            print('Notification permission denied.');
+          }
+          return; // Exit if permission is denied
+        }
+      }
+    } else {
+      // For Android < 13, notification permissions are granted automatically
+      if (kDebugMode) {
+        print('No need to request notification permission on Android < 13.');
+      }
+    }
+  }
+
+    // Proceed with Firebase Messaging setup
     await _firebaseMessaging.requestPermission();
 
     // Get and save the FCM token
     final fcmToken = await _firebaseMessaging.getToken();
     if (fcmToken != null) {
       await saveTokenToFirestore(fcmToken);
-      await fetchAndPrintTokenFromFirestore();
     }
 
     // Listen to foreground messages
@@ -56,7 +80,7 @@ class FirebaseApi {
         'FCMTOKEN': fcmToken,
       });
       if (kDebugMode) {
-        print('Token saved to Firestore successfully.');
+        print('Token saved to Firestore successfully: $fcmToken');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -64,36 +88,6 @@ class FirebaseApi {
       }
     }
   }
-
-  Future<void> fetchAndPrintTokenFromFirestore() async {
-  try {
-    // Get the current device's FCM token
-    final fcmToken = await _firebaseMessaging.getToken();
-
-    if (fcmToken != null) {
-      final snapshot = await _firestore.collection('device_tokens').doc(fcmToken).get();
-
-      if (snapshot.exists) {
-        final token = snapshot.data()?['FCMTOKEN'];
-        if (kDebugMode) {
-          print('Fetched FCM Token for this device: $token');
-        }
-      } else {
-        if (kDebugMode) {
-          print('No token found for this device in Firestore.');
-        }
-      }
-    } else {
-      if (kDebugMode) {
-        print('Unable to fetch FCM token for this device.');
-      }
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error fetching token for this device from Firestore: $e');
-    }
-  }
-}
 
     void _navigateToNotificationPage(BuildContext context, String? title, String? body) {
     if (!_isNotificationPageOpen) {
