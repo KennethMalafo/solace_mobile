@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -109,14 +110,20 @@ class TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
                   ? () async {
                       // Save user acceptance in Firestore
                       await saveTermsAcceptance();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HomeScreen()),
-                      );
+
+                      // Schedule navigation to the next frame to ensure it's outside async
+                      if (mounted) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const HomeScreen()),
+                          );
+                        });
+                      }
                     }
                   : null, // Disable button if checkbox is not checked
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, 
+                foregroundColor: Colors.white,
                 backgroundColor: isChecked ? Colors.blue[800] : Colors.grey, // Change color based on checkbox 
               ),
               child: const Text('I Agree'),
@@ -140,7 +147,9 @@ Future<void> saveTermsAcceptance() async {
       'acceptedAt': Timestamp.now(),
     }, SetOptions(merge: true)); // Use merge to avoid overwriting other fields
   } catch (e) {
-    print("Error saving terms acceptance: $e");
+    if (kDebugMode) {
+      print("Error saving terms acceptance: $e");
+    }
   }
 }
 

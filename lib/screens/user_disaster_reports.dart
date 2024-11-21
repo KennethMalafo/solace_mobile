@@ -67,48 +67,56 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
 
     try {
       if (_image != null) {
-        bool shouldReplace = await showDialog(
+        // Guard showDialog with a mounted check
+        if (!mounted) return;
+
+        bool? shouldReplace = await showDialog(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text("Replace Image"),
             content: const Text("Do you want to replace the current image?"),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => Navigator.of(dialogContext).pop(false),
                 child: const Text("Cancel"),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
                 child: const Text("Replace"),
               ),
             ],
           ),
         );
 
-        if (!shouldReplace) {
-          setState(() {
-            _isPickingImage = false;
-          });
+        if (shouldReplace == null || !shouldReplace) {
+          if (mounted) {
+            setState(() {
+              _isPickingImage = false;
+            });
+          }
           return;
         }
       }
 
       File? selectedImage = await pickImage();
-      if (selectedImage != null) {
+      if (selectedImage != null && mounted) {
         setState(() {
           _image = selectedImage;
         });
       }
     } catch (e) {
+      // Guard ScaffoldMessenger with a mounted check
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error selecting image')),
         );
       }
     } finally {
-      setState(() {
-        _isPickingImage = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isPickingImage = false;
+        });
+      }
     }
   }
 
