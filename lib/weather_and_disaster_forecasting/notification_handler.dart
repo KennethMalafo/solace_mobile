@@ -9,6 +9,8 @@ import 'package:solace_mobile_frontend/screens/notification_page.dart';
 Future<void> handleBackgroundMessage(RemoteMessage message) async {
   if (kDebugMode) {
     print('Background Message - Title: ${message.notification?.title}');
+  }
+  if (kDebugMode) {
     print('Background Message - Body: ${message.notification?.body}');
   }
 }
@@ -18,29 +20,29 @@ class NotificationHandler {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isNotificationPageOpen = false; // Track if NotificationPage is open
 
-  // Initialize notifications and setup Firebase Messaging
   Future<void> initNotification(BuildContext context) async {
-    if (Platform.isAndroid) {
-      // Check Android version for permission handling
-      if (Platform.version.contains("13") || int.tryParse(Platform.version.split('.')[0])! >= 13) {
-        // For Android 13+, request notification permission
-        final permissionStatus = await Permission.notification.status;
-        if (permissionStatus.isDenied) {
-          final requestStatus = await Permission.notification.request();
-          if (!requestStatus.isGranted) {
-            if (kDebugMode) {
-              print('Notification permission denied.');
-            }
-            return; // Exit if permission is denied
+  if (Platform.isAndroid) {
+    // Check Android version
+    if (Platform.version.contains("13") || int.tryParse(Platform.version.split('.')[0])! >= 13) {
+      // For Android 13+, request notification permission
+      final permissionStatus = await Permission.notification.status;
+
+      if (permissionStatus.isDenied) {
+        final requestStatus = await Permission.notification.request();
+        if (!requestStatus.isGranted) {
+          if (kDebugMode) {
+            print('Notification permission denied.');
           }
-        }
-      } else {
-        // For Android < 13, notification permissions are granted automatically
-        if (kDebugMode) {
-          print('No need to request notification permission on Android < 13.');
+          return; // Exit if permission is denied
         }
       }
+    } else {
+      // For Android < 13, notification permissions are granted automatically
+      if (kDebugMode) {
+        print('No need to request notification permission on Android < 13.');
+      }
     }
+  }
 
     // Proceed with Firebase Messaging setup
     await _firebaseMessaging.requestPermission();
@@ -54,40 +56,24 @@ class NotificationHandler {
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (message.notification != null && !_isNotificationPageOpen) {
-        // Defer navigation safely using addPostFrameCallback
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) { // Check if context is still mounted
-            _navigateToNotificationPage(context, message.notification!.title, message.notification!.body);
-          }
-        });
+        _navigateToNotificationPage(context, message.notification!.title, message.notification!.body);
       }
     });
 
     // Handle notification tap when the app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (message.notification != null && !_isNotificationPageOpen) {
-        // Defer navigation safely using addPostFrameCallback
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) { // Check if context is still mounted
-            _navigateToNotificationPage(context, message.notification!.title, message.notification!.body);
-          }
-        });
+        _navigateToNotificationPage(context, message.notification!.title, message.notification!.body);
       }
     });
 
     // Handle notification tap when the app is completely closed
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null && initialMessage.notification != null && !_isNotificationPageOpen) {
-      // Defer navigation safely using addPostFrameCallback
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) { // Check if context is still mounted
-          _navigateToNotificationPage(context, initialMessage.notification!.title, initialMessage.notification!.body);
-        }
-      });
+      _navigateToNotificationPage(context, initialMessage.notification!.title, initialMessage.notification!.body);
     }
   }
 
-  // Save the FCM token to Firestore
   Future<void> saveTokenToFirestore(String fcmToken) async {
     try {
       await _firestore.collection('device_tokens').doc(fcmToken).set({
@@ -103,12 +89,10 @@ class NotificationHandler {
     }
   }
 
-  // Navigate to the NotificationPage when a notification is received
-  void _navigateToNotificationPage(BuildContext context, String? title, String? body) {
+    void _navigateToNotificationPage(BuildContext context, String? title, String? body) {
     if (!_isNotificationPageOpen) {
       _isNotificationPageOpen = true; // Mark NotificationPage as open
-
-      // Use Navigator to go to NotificationPage
+      
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
