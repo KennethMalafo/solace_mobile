@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:solace_mobile_frontend/weather_and_disaster_forecasting/saving_user_auth.dart';
 import 'package:solace_mobile_frontend/screens/home_screen.dart';
+import 'package:solace_mobile_frontend/screens/terms_and_conditions.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -36,15 +39,47 @@ class SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
+    _checkUserStatus(); // Check user status from Firestore
+  }
+
+  Future<void> _checkUserStatus() async {
+    // Use AuthHelper to get or create a user and get their ID
+    final userId = await AuthHelper.getOrCreateUserId();
+
+    // Fetch user document from Firestore
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+
+    // Check if terms are accepted
+    final hasAcceptedTerms = userDoc.data()?['hasAcceptedTerms'] ?? false;
+
     Future.delayed(const Duration(seconds: 4), () {
-      _controller.reverse().then((_) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
-          ));
-        }
-      });
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (hasAcceptedTerms) {
+            // If terms accepted, navigate to HomeScreen
+            _navigateToHome();
+          } else {
+            // If terms not accepted, navigate to TermsAndConditionsScreen
+            _navigateToTerms();
+          }
+        });
+      }
     });
+  }
+
+  void _navigateToHome() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
+  }
+
+  void _navigateToTerms() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const TermsAndConditionsScreen()),
+    );
   }
 
   @override
@@ -54,14 +89,14 @@ class SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-@override
-Widget build(BuildContext context) {
-  final mediaQuery = MediaQuery.of(context);
-  double textSize = mediaQuery.size.width * 0.07;
-  double imageHeight = mediaQuery.size.height * 0.1;
-  double imageWidth = mediaQuery.size.width * 0.07;
-  double progressBarWidth = mediaQuery.size.width * 0.6;
-  double progressBarHeight = 20.0;
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    double textSize = mediaQuery.size.width * 0.07;
+    double imageHeight = mediaQuery.size.height * 0.1;
+    double imageWidth = mediaQuery.size.width * 0.07;
+    double progressBarWidth = mediaQuery.size.width * 0.6;
+    double progressBarHeight = 20.0;
 
     return Scaffold(
       backgroundColor: Colors.blue[100],
@@ -183,7 +218,12 @@ class WavePainter extends CustomPainter {
     for (double i = 0; i <= size.width; i++) {
       path.lineTo(
         i,
-        waterHeight + 20 * math.sin((i / size.width * 2 * math.pi) + (animation.value * 2 * math.pi))
+        waterHeight +
+            20 *
+                math.sin(
+                  (i / size.width * 2 * math.pi) +
+                      (animation.value * 2 * math.pi),
+                ),
       );
     }
 
