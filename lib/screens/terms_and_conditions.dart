@@ -130,7 +130,7 @@ class TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
 
 3. **App Features**: The app includes water level monitoring, weather forecasts, evacuation plans, notifications, and disaster reporting. These features are provided for your safety and the better management of local disasters.
 
-4. **Privacy**: While you do not need to log in, the app may collect location data and other information related to your usage (e.g., water levels, reports). This data is used solely for the purpose of improving disaster management services and safety alerts. Your data will not be shared with third parties without your consent, except where required by law.
+4. **Privacy**: While you do not need to log in, the app may collect location data and other information related to your usage (e.g., water levels, reports, email, and phone number). This data is used solely for the purpose of improving disaster management services and safety alerts. Your data will not be shared with third parties without your consent, except where required by law.
 
 5. **Liability**: MDRRMO is not liable for any damages, loss, or injury caused by the use of this app, including, but not limited to, incorrect or delayed information provided by the system. Use the app at your own risk.
 

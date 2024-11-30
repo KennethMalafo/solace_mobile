@@ -33,12 +33,12 @@ Future<WeatherData> fetchWeather() async {
     final currentWeatherJson = json.decode(currentResponse.body);
     final hourlyWeatherJson = json.decode(hourlyResponse.body);
 
-    if (kDebugMode) {
-      print('Current Weather JSON: $currentWeatherJson');
-    }
-    if (kDebugMode) {
-      print('Hourly Weather JSON: $hourlyWeatherJson');
-    }
+    //if (kDebugMode) {
+     // print('Current Weather JSON: $currentWeatherJson');
+    //}
+    //if (kDebugMode) {
+      //print('Hourly Weather JSON: $hourlyWeatherJson');
+    //}
 
     CurrentWeather current = CurrentWeather(
       temperature: (currentWeatherJson['main']['temp'] - 273.15).round(), // Convert from Kelvin to Celsius
@@ -56,9 +56,9 @@ Future<WeatherData> fetchWeather() async {
 
     // Get the current time
     DateTime now = DateTime.now();
-    if (kDebugMode) {
-      print('Current Local Time: $now');
-    }
+    //if (kDebugMode) {
+      //print('Current Local Time: $now');
+    //}
 
     // Create a list to hold the next four hours
     List<HourlyWeather> nextFourHours = [];
@@ -66,15 +66,15 @@ Future<WeatherData> fetchWeather() async {
     // Iterate through the hourly list and find the next four hours
     for (var hour in hourly) {
       DateTime hourTime = DateTime.parse(hour.time);
-      if (kDebugMode) {
-        print('UTC Time: ${hourTime.toUtc()} | Local Time: $hourTime');
-      }
+      //if (kDebugMode) {
+       // print('UTC Time: ${hourTime.toUtc()} | Local Time: $hourTime');
+      //}
 
       if (hourTime.isAfter(now) && nextFourHours.length < 4) {
         nextFourHours.add(hour);
-        if (kDebugMode) {
-          print('Added Hour: ${hour.temperature}°C at ${hour.time}');
-        }
+        //if (kDebugMode) {
+         // print('Added Hour: ${hour.temperature}°C at ${hour.time}');
+        //}
       }
     }
 

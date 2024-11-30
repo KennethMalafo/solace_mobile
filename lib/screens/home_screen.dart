@@ -212,7 +212,7 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
       var latestDocument = snapshot.docs.first;
       var data = latestDocument.data();
       double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
-      //currentWaterLevel; // Add 4 to the fetched water level
+      currentWaterLevel + 4.0; // Add 4 to the fetched water level
       return currentWaterLevel;
     }
     return 0.0;
@@ -235,7 +235,7 @@ class HomeContentState extends State<HomeContent> with SingleTickerProviderState
             var latestDocument = snapshot.docs.first;
             var data = latestDocument.data();
             double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
-            return currentWaterLevel; //+ 4.0; // Add 4 to the fetched water level
+            return currentWaterLevel + 4.0; // Add 4 to the fetched water level
           }
           return 0.0;
         });
@@ -840,7 +840,7 @@ class DigitalWaterGaugeState extends State<DigitalWaterGauge> with SingleTickerP
           width: 40, // Fixed width for the ruler
           height: gaugeHeight, // Match height of the gauge
           child: Ruler(
-            maxHeight: 9.0, // Maximum height in meters
+            maxHeight: 10.0, // Maximum height in meters
             currentLevel: widget.currentLevel, // Current water level
           ),
         ),
