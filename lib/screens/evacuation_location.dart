@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EvacuationLocation extends StatefulWidget {
   const EvacuationLocation({super.key});
@@ -48,54 +49,80 @@ class EvacuationLocationState extends State<EvacuationLocation> {
     }
   }
 
-  void _addEvacuationMarkers() {
-    _allMarkers.addAll([
-      Marker(
-        markerId: const MarkerId('evacuation site 1'),
-        position: const LatLng(15.978444, 120.473362),
-        infoWindow: const InfoWindow(
-            title: 'Minien East/West', snippet: 'Minien National High School'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      ),
-      Marker(
-        markerId: const MarkerId('evacuation site 2'),
-        position: const LatLng(15.987080, 120.450732),
-        infoWindow: const InfoWindow(
-            title: 'Maticmatic evacuation site', snippet: 'Maticmatic Elementary School'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      ),
-      Marker(
-        markerId: const MarkerId('evacuation site 3'),
-        position: const LatLng(15.980294, 120.468020),
-        infoWindow: const InfoWindow(
-            title: 'Tebag East evacuation site', snippet: 'Tebag East Day Care Center'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      ),
-      Marker(
-        markerId: const MarkerId('evacuation site 4'),
-        position: const LatLng(16.00364, 120.45218),
-        infoWindow: const InfoWindow(
-            title: 'Erfe evacuation site', snippet: 'Daroy Elementary School'),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      ),
-    ]);
-    setState(() {
-      _isLoading = false;
-    });
+  Future<void> _addEvacuationMarkers() async {
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  // Listen to real-time updates from the 'evacuation_sites' collection
+  firestore.collection('evacuation_sites').snapshots().listen((querySnapshot) {
+    // Clear any existing markers
+    _allMarkers.clear();
+
+    // Iterate through the documents and create markers
+    for (var doc in querySnapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      // Validate latitude and longitude
+      if (data['latitude'] == null || data['longitude'] == null) {
+        debugPrint("Skipping document ${doc.id}: Missing latitude or longitude.");
+        continue;
+      }
+
+      // Safely convert latitude and longitude to double
+      final double? latitude = _parseCoordinate(data['latitude']);
+      final double? longitude = _parseCoordinate(data['longitude']);
+
+      // Ensure latitude and longitude are valid doubles
+      if (latitude != null && longitude != null) {
+        _allMarkers.add(
+          Marker(
+            markerId: MarkerId(doc.id), // Use the document ID as the marker ID
+            position: LatLng(latitude, longitude),
+            infoWindow: InfoWindow(
+              title: data['name'] ?? 'Unknown Location', // Provide default values
+              snippet: '${data['current_residents'] ?? 0} / ${data['max_residents'] ?? 0} residents',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          ),
+        );
+      } else {
+        debugPrint("Invalid latitude or longitude for document ${doc.id}");
+      }
+    }
+
+    // Check if the widget is still mounted before calling setState
+    if (mounted) {
+      setState(() {
+        _isLoading = false; // Mark as loaded
+      });
+    }
+  });
+}
+
+// Helper method to safely parse latitude and longitude values
+double? _parseCoordinate(dynamic coordinate) {
+  if (coordinate is String) {
+    // Try parsing the string to a double
+    return double.tryParse(coordinate);
+  } else if (coordinate is num) {
+    // If it's already a number, just return it
+    return coordinate.toDouble();
   }
+  return null; // Return null if neither a string nor a number
+}
 
   Future<void> _onEvacuationSiteSelected(Marker marker) async {
     setState(() {
       _showMap = true;
       _currentMarkers.clear();
       _currentMarkers.add(marker);
-      
+
       // Re-add the current location marker if available
       if (_currentPosition != null) {
         _currentMarkers.add(
           Marker(
             markerId: const MarkerId("current_location"),
-            position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            position: LatLng(
+                _currentPosition!.latitude, _currentPosition!.longitude),
             icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
             infoWindow: const InfoWindow(title: "You are here"),
           ),
@@ -107,12 +134,16 @@ class EvacuationLocationState extends State<EvacuationLocation> {
       final GoogleMapController controller = await _controller.future;
       LatLngBounds bounds = LatLngBounds(
         southwest: LatLng(
-          min(marker.position.latitude, _currentPosition?.latitude ?? marker.position.latitude),
-          min(marker.position.longitude, _currentPosition?.longitude ?? marker.position.longitude),
+          min(marker.position.latitude,
+              _currentPosition?.latitude ?? marker.position.latitude),
+          min(marker.position.longitude,
+              _currentPosition?.longitude ?? marker.position.longitude),
         ),
         northeast: LatLng(
-          max(marker.position.latitude, _currentPosition?.latitude ?? marker.position.latitude),
-          max(marker.position.longitude, _currentPosition?.longitude ?? marker.position.longitude),
+          max(marker.position.latitude,
+              _currentPosition?.latitude ?? marker.position.latitude),
+          max(marker.position.longitude,
+              _currentPosition?.longitude ?? marker.position.longitude),
         ),
       );
       await controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
@@ -204,18 +235,20 @@ class EvacuationLocationState extends State<EvacuationLocation> {
                       ),
                       ListView(
                         children: _allMarkers
-                            .where((marker) => marker.markerId.value != 'currentLocation')
+                            .where((marker) =>
+                                marker.markerId.value != 'currentLocation')
                             .map((marker) {
                           return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 15),
                             elevation: 5,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: ListTile(
                               onTap: () => _onEvacuationSiteSelected(marker),
-                              contentPadding:
-                                  const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 15, vertical: 10),
                               leading: const CircleAvatar(
                                 backgroundImage: AssetImage('images/a_logo.png'),
                               ),
