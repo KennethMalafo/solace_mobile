@@ -50,53 +50,53 @@ class EvacuationLocationState extends State<EvacuationLocation> {
   }
 
   Future<void> _addEvacuationMarkers() async {
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  // Listen to real-time updates from the 'evacuation_sites' collection
-  firestore.collection('evacuation_sites').snapshots().listen((querySnapshot) {
-    // Clear any existing markers
-    _allMarkers.clear();
+    // Listen to real-time updates from the 'evacuation_sites' collection
+    firestore.collection('evacuation_sites').snapshots().listen((querySnapshot) {
+      // Clear any existing markers
+      _allMarkers.clear();
 
-    // Iterate through the documents and create markers
-    for (var doc in querySnapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      // Iterate through the documents and create markers
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
 
-      // Validate latitude and longitude
-      if (data['latitude'] == null || data['longitude'] == null) {
-        debugPrint("Skipping document ${doc.id}: Missing latitude or longitude.");
-        continue;
-      }
+        // Validate latitude and longitude
+        if (data['latitude'] == null || data['longitude'] == null) {
+          debugPrint("Skipping document ${doc.id}: Missing latitude or longitude.");
+          continue;
+        }
 
-      // Safely convert latitude and longitude to double
-      final double? latitude = _parseCoordinate(data['latitude']);
-      final double? longitude = _parseCoordinate(data['longitude']);
+        // Safely convert latitude and longitude to double
+        final double? latitude = _parseCoordinate(data['latitude']);
+        final double? longitude = _parseCoordinate(data['longitude']);
 
-      // Ensure latitude and longitude are valid doubles
-      if (latitude != null && longitude != null) {
-        _allMarkers.add(
-          Marker(
-            markerId: MarkerId(doc.id), // Use the document ID as the marker ID
-            position: LatLng(latitude, longitude),
-            infoWindow: InfoWindow(
-              title: data['name'] ?? 'Unknown Location', // Provide default values
-              snippet: '${data['current_residents'] ?? 0} / ${data['max_residents'] ?? 0} residents',
+        // Ensure latitude and longitude are valid doubles
+        if (latitude != null && longitude != null) {
+          _allMarkers.add(
+            Marker(
+              markerId: MarkerId(doc.id), // Use the document ID as the marker ID
+              position: LatLng(latitude, longitude),
+              infoWindow: InfoWindow(
+                title: data['name'] ?? 'Unknown Location', // Provide default values
+                snippet: '${data['current_residents'] ?? 0} / ${data['max_residents'] ?? 0} residents',
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
             ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          ),
-        );
-      } else {
-        debugPrint("Invalid latitude or longitude for document ${doc.id}");
+          );
+        } else {
+          debugPrint("Invalid latitude or longitude for document ${doc.id}");
+        }
       }
-    }
 
-    // Check if the widget is still mounted before calling setState
-    if (mounted) {
-      setState(() {
-        _isLoading = false; // Mark as loaded
-      });
-    }
-  });
-}
+      // Check if the widget is still mounted before calling setState
+      if (mounted) {
+        setState(() {
+          _isLoading = false; // Mark as loaded
+        });
+      }
+    });
+  }
 
 // Helper method to safely parse latitude and longitude values
 double? _parseCoordinate(dynamic coordinate) {

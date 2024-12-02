@@ -22,51 +22,51 @@ class TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
   }
 
   Future<void> _initializeUser() async {
-  userId = await AuthHelper.getOrCreateUserId();
-  
-  // Check if the user document exists
-  final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-  
-  if (!userDoc.exists) {
-    // Create the document with default values
-    await FirebaseFirestore.instance.collection('users').doc(userId).set({
-      'hasAcceptedTerms': false, // Default value
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  } else {
-    // Retrieve if the user has accepted terms
-    final hasAcceptedTerms = userDoc.data()?['hasAcceptedTerms'] ?? false;
+    userId = await AuthHelper.getOrCreateUserId();
+    
+    // Check if the user document exists
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      // Create the document with default values
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'hasAcceptedTerms': false, // Default value
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Retrieve if the user has accepted terms
+      final hasAcceptedTerms = userDoc.data()?['hasAcceptedTerms'] ?? false;
 
-    if (hasAcceptedTerms) {
-      // Navigate to the HomeScreen if terms are already accepted
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+      if (hasAcceptedTerms) {
+        // Navigate to the HomeScreen if terms are already accepted
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
       }
     }
   }
-}
 
   Future<void> _acceptTerms(BuildContext context) async {
-  final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
-  
-  // Ensure the document exists before updating
-  final userDoc = await userDocRef.get();
-  if (!userDoc.exists) {
-    await userDocRef.set({
-      'hasAcceptedTerms': true,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  } else {
-    await userDocRef.update({'hasAcceptedTerms': true});
-  }
+    final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+    
+    // Ensure the document exists before updating
+    final userDoc = await userDocRef.get();
+    if (!userDoc.exists) {
+      await userDocRef.set({
+        'hasAcceptedTerms': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await userDocRef.update({'hasAcceptedTerms': true});
+    }
 
-  // Navigate to the HomeScreen
-  Navigator.of(context).pushReplacement(
-    MaterialPageRoute(builder: (context) => const HomeScreen()),
-  );
-}
+    // Navigate to the HomeScreen
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
