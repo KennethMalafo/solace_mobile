@@ -234,7 +234,7 @@ double? _parseCoordinate(dynamic coordinate) {
                         ),
                       ),
                       ListView(
-                        children: _allMarkers
+                        children: [..._allMarkers
                             .where((marker) =>
                                 marker.markerId.value != 'currentLocation')
                             .map((marker) {
@@ -257,6 +257,18 @@ double? _parseCoordinate(dynamic coordinate) {
                             ),
                           );
                         }).toList(),
+                        const SizedBox(height: 20),
+    const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.0),
+        child: Text(
+          '*Note: maari pa ring ma-access ang evacuation site ngunit hindi na makikita ang updated na number ng residents at mga bagong evacuation location kung walang internet*',
+          style: TextStyle(fontStyle: FontStyle.italic),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ),
+                        ],
                       ),
                     ],
                   ),

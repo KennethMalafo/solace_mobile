@@ -41,6 +41,8 @@ class ImageUploadScreen extends StatefulWidget {
 class ImageUploadScreenState extends State<ImageUploadScreen> {
   File? _image;
   String _message = '';
+  final TextEditingController _email = TextEditingController();
+  final TextEditingController _phoneNumber = TextEditingController(text: "+69");
   bool _isPickingImage = false;
   bool _isLoading = false; // Loading state
 
@@ -136,6 +138,34 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
       return;
     }
 
+    if (_email.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an email')),
+      );
+      return;
+    }
+
+    if (!_email.text.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email')),
+      );
+      return;
+    }
+
+    if (_phoneNumber.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an email')),
+      );
+      return;
+    }
+
+    if (_phoneNumber.text.trim().length < 13 ) { // +69 and 10 digits
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid contact number')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true; // Start loading
     });
@@ -148,6 +178,8 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
         position.latitude,
         position.longitude,
         _message,
+        _email.text,
+        _phoneNumber.text,
       );
 
       if (mounted) {
@@ -224,8 +256,7 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
           // Foreground content layer
           Padding(
             padding: EdgeInsets.all(screenWidth * 0.04),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: ListView(
               children: [
                 Center(
                   child: Text(
@@ -299,6 +330,50 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.02),
+                TextField(
+                  controller: _email,
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.045,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Enter your email',
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontSize: screenWidth * 0.04,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Colors.blue[400]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Colors.blue[600]!),
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+                TextField(
+                  controller: _phoneNumber,
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.045,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Enter your phone number',
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontSize: screenWidth * 0.04,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Colors.blue[400]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Colors.blue[600]!),
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _uploadData,
                   style: ElevatedButton.styleFrom(
@@ -317,6 +392,13 @@ class ImageUploadScreenState extends State<ImageUploadScreen> {
                             fontSize: screenWidth * 0.04,
                           ),
                         ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+                const Center(
+                  child: Text(
+                    '*Note: paki upload ang imahe ng disaster related incident sa kung saan man ito nangyare*',
+                    style: TextStyle(fontStyle: FontStyle.italic),
+                  ),
                 ),
               ],
             ),

@@ -4,8 +4,15 @@ import 'package:flutter/foundation.dart';
 class SavingUserReports {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Method to save data (image URL, message, and location) to Firestore
-  Future<void> saveDataToFirestore(String imageUrl, double latitude, double longitude, String message) async {
+  // Method to save data (image URL, message, and location, email, and phone number) to Firestore
+  Future<void> saveDataToFirestore(
+    String imageUrl, 
+    double latitude, 
+    double longitude, 
+    String message,
+    String email,
+    String phoneNumber,
+    ) async {
     try {
       // Create a reference to the collection where data will be saved
       CollectionReference uploadsCollection = _firestore.collection('user_uploads');
@@ -16,6 +23,8 @@ class SavingUserReports {
         'latitude': latitude,
         'longitude': longitude,
         'message': message,
+        'email' : email,
+        'phoneNumber' : phoneNumber,
         'timestamp': FieldValue.serverTimestamp(),
       };
 
