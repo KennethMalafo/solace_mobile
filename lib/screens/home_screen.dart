@@ -23,82 +23,92 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;  // This holds the index of the current tab
+  // This holds the index of the currently selected tab in the navigation bar
+  int _currentIndex = 0;
 
-  // This function will handle the tab change
+  // Callback to handle navigation bar item taps and update the current index
   void _onItemTapped(int index) {
     setState(() {
-      _currentIndex = index;  // Change the current index
+      _currentIndex = index; // Set the selected tab index
     });
   }
 
-  // Method to switch directly to the Evacuation location tab
+  // Method to directly navigate to the Evacuation Location tab (index 2)
   void _goToEvacuationLocation() {
     setState(() {
-      _currentIndex = 2;  // Switch to the Evacuation location tab (index 2)
+      _currentIndex = 2; // Set the tab index to 2 (EvacuationLocation)
     });
   }
 
-  // Dynamically generate the screens list
+  // List of screens for the bottom navigation tabs
   List<Widget> get _screens {
     return [
-      HomeContent(onShowEvacuationLocation: _goToEvacuationLocation), // Pass the callback here
-      const LigtasTips(),
-      const EvacuationLocation(),
-      const ImageUploadScreen(),
+      // HomeContent receives a callback to show the Evacuation Location screen
+      HomeContent(onShowEvacuationLocation: _goToEvacuationLocation),
+      const LigtasTips(), // Tips tab
+      const EvacuationLocation(), // Evacuation location tab
+      const ImageUploadScreen(), // Image upload tab
     ];
   }
 
   @override
   Widget build(BuildContext context) {
+    // Calculate padding for the bottom of the navigation bar based on device
     double bottomPadding = MediaQuery.of(context).padding.bottom < 34 ? 8 : 0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
+      // Set system UI overlay style for the navigation bar
       value: const SystemUiOverlayStyle(
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: Colors.blue[100],
+        backgroundColor: Colors.blue[100], // Background color of the screen
         body: AnimatedSwitcher(
+          // Smooth transition between screens when switching tabs
           duration: const Duration(milliseconds: 300),
-          child: _screens[_currentIndex],
+          child: _screens[_currentIndex], // Display the currently selected screen
         ),
         bottomNavigationBar: DecoratedBox(
+          // Add decoration to the navigation bar (e.g., shadow, border radius)
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 6,
-                offset: const Offset(0, 3),
+                color: Colors.black.withOpacity(0.2), // Shadow color with transparency
+                spreadRadius: 1, // Spread radius of the shadow
+                blurRadius: 6, // Blur radius of the shadow
+                offset: const Offset(0, 3), // Shadow offset
               ),
             ],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(16), // Rounded corners for the top
+            ),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, // Minimize vertical space usage
             children: [
               WaterDropNavBar(
-                waterDropColor: Colors.blue[900]!,
-                onItemSelected: _onItemTapped,
-                selectedIndex: _currentIndex,
-                bottomPadding: bottomPadding,
+                // Custom navigation bar with water drop effect
+                waterDropColor: Colors.blue[900]!, // Water drop color
+                onItemSelected: _onItemTapped, // Callback for item selection
+                selectedIndex: _currentIndex, // Highlight the selected tab
+                bottomPadding: bottomPadding, // Adjust padding for different devices
                 barItems: [
+                  // Navigation bar items with filled and outlined icons
                   BarItem(
-                    filledIcon: Icons.home,
-                    outlinedIcon: Icons.home_outlined,
+                    filledIcon: Icons.home, // Filled icon for Home
+                    outlinedIcon: Icons.home_outlined, // Outlined icon for Home
                   ),
                   BarItem(
-                    filledIcon: Icons.tips_and_updates,
-                    outlinedIcon: Icons.tips_and_updates_outlined,
+                    filledIcon: Icons.tips_and_updates, // Filled icon for Tips
+                    outlinedIcon: Icons.tips_and_updates_outlined, // Outlined icon for Tips
                   ),
                   BarItem(
-                    filledIcon: Icons.map,
-                    outlinedIcon: Icons.map_outlined,
+                    filledIcon: Icons.map, // Filled icon for Map
+                    outlinedIcon: Icons.map_outlined, // Outlined icon for Map
                   ),
                   BarItem(
-                    filledIcon: Icons.add_a_photo,
-                    outlinedIcon: Icons.add_a_photo_outlined,
+                    filledIcon: Icons.add_a_photo, // Filled icon for Photo Upload
+                    outlinedIcon: Icons.add_a_photo_outlined, // Outlined icon for Photo Upload
                   ),
                 ],
               ),
@@ -111,7 +121,7 @@ class HomeScreenState extends State<HomeScreen> {
 }
 
 class HomeContent extends StatefulWidget {
-  final VoidCallback onShowEvacuationLocation;
+  final VoidCallback onShowEvacuationLocation; // Callback to show evacuation location
   const HomeContent({super.key, required this.onShowEvacuationLocation});
 
   @override
@@ -119,111 +129,113 @@ class HomeContent extends StatefulWidget {
 }
 
 class HomeContentState extends State<HomeContent> with SingleTickerProviderStateMixin {
+  // Future variables to fetch weather and water level data
   Future<WeatherData>? weatherData;
-  Future<double>? waterLevelData; // Change this to Future<double> to hold the water level
-  bool isRefreshing = false;
-  late AnimationController _animationController;
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
-  List<ConnectivityResult> _connectivityResult = [];
+  Future<double>? waterLevelData;
+
+  bool isRefreshing = false; // Tracks whether data is being refreshed
+  late AnimationController _animationController; // Controls animation for refreshing
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription; // Tracks connectivity changes
+  List<ConnectivityResult> _connectivityResult = []; // Holds the current connectivity state
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize weather and water level data
     weatherData = fetchWeather();
-    waterLevelData = fetchWaterLevel(); // Fetch the water level initially
+    waterLevelData = fetchWaterLevel();
+
     // Initial connectivity check
     _checkInitialConnectivity();
+
+    // Initialize animation controller for pull-to-refresh functionality
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
 
-    // Subscribe to connectivity changes
+    // Listen for connectivity changes
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
       setState(() {
-        _connectivityResult = result; // Update the connectivity state
+        _connectivityResult = result; // Update connectivity state
       });
 
-       // Check if we have internet connection from the result
+      // Fetch data when connected to the internet
       if (result.contains(ConnectivityResult.mobile) || result.contains(ConnectivityResult.wifi)) {
-        // Refetch the weather data when connectivity changes
         setState(() {
           weatherData = fetchWeather(); // Refresh weather data
-          waterLevelData = fetchWaterLevel();
+          waterLevelData = fetchWaterLevel(); // Refresh water level data
         });
       }
     });
   }
 
-      // Check if we have internet connection from the result
-      //if (result.contains(ConnectivityResult.mobile) || result.contains(ConnectivityResult.wifi)) {
-        //_refreshWeatherandWaterLevel();
-     // }
-   // });
-  //}
-
+  // Checks the initial connectivity status
   Future<void> _checkInitialConnectivity() async {
     _connectivityResult = await Connectivity().checkConnectivity();
-    setState(() {}); // Update UI based on initial connectivity status
+    setState(() {}); // Update the UI based on connectivity
   }
 
   @override
   void dispose() {
-    // Cancel the subscription when the widget is disposed
-    _connectivitySubscription.cancel();
-    _animationController.dispose();
+    // Clean up resources
+    _connectivitySubscription.cancel(); // Cancel connectivity listener
+    _animationController.dispose(); // Dispose animation controller
     super.dispose();
   }
 
+  // Refreshes both weather and water level data
   Future<void> _refreshWeatherandWaterLevel() async {
-  setState(() {
-    isRefreshing = true; // Set refreshing to true when the pull-down occurs
-  });
-
-  try {
-    // Attempt to fetch new weather and water level data
-    weatherData = fetchWeather();
-    waterLevelData = fetchWaterLevel();
-  } catch (e) {
-    // Show an error message or handle the error if fetching fails
-    if (kDebugMode) {
-      print("Failed to refresh data: $e");
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Failed to refresh data. Please check your connection.")),
-    );
-  } finally {
-    // Reset refreshing state after attempt to fetch
     setState(() {
-      isRefreshing = false;
+      isRefreshing = true; // Indicate that data is being refreshed
     });
-  }
-}
 
+    try {
+      // Fetch new weather and water level data
+      weatherData = fetchWeather();
+      waterLevelData = fetchWaterLevel();
+    } catch (e) {
+      // Show error message if fetching fails
+      if (kDebugMode) {
+        print("Failed to refresh data: $e");
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to refresh data. Please check your connection.")),
+      );
+    } finally {
+      // Reset refreshing state
+      setState(() {
+        isRefreshing = false;
+      });
+    }
+  }
+
+  // Fetches the latest water level data from Firestore
   Future<double> fetchWaterLevel() async {
-  try {
-    var snapshot = await FirebaseFirestore.instance
-        .collection('water_level')
-        .orderBy('date', descending: true)
-        .limit(1)
-        .get();
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection('water_level')
+          .orderBy('date', descending: true)
+          .limit(1)
+          .get();
 
-    if (snapshot.docs.isNotEmpty) {
-      var latestDocument = snapshot.docs.first;
-      var data = latestDocument.data();
-      double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
-      currentWaterLevel + 4.0; // Add 4 to the fetched water level
-      return currentWaterLevel;
+      if (snapshot.docs.isNotEmpty) {
+        var latestDocument = snapshot.docs.first;
+        var data = latestDocument.data();
+        double currentWaterLevel = data['waterlevel']?.toDouble() ?? 0.0;
+        return currentWaterLevel + 4.0; // Add 4 to the fetched water level
+      }
+      return 0.0;
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error fetching water level data: $e");
+      }
+      throw Exception("Failed to fetch water level due to a connection issue.");
     }
-    return 0.0;
-  } catch (e) {
-    if (kDebugMode) {
-      print("Error fetching water level data: $e");
-    }
-    throw Exception("Failed to fetch water level due to a connection issue.");
   }
-}
 
+  // Streams live water level updates from Firestore
   Stream<double> waterLevelStream() {
     return FirebaseFirestore.instance
         .collection('water_level')
@@ -712,7 +724,7 @@ class Ruler extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rulerHeight = maxHeight * 20; // Example scaling for visual representation
+    final rulerHeight = maxHeight * 20; // Scaling for visual representation
 
     return CustomPaint(
       size: Size(40, rulerHeight), // Width for the ruler
