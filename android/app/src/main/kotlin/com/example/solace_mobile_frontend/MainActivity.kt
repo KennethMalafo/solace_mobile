@@ -1,4 +1,4 @@
-package com.example.solace_mobile_frontend
+package com.teambuilding.solace_river_watch
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -147,7 +147,7 @@ class TermsAndConditionsScreenState extends State<TermsAndConditionsScreen> {
 
 10. **Force Majeure**: MDRRMO will not be held liable for any delay or failure in providing services due to events outside of its control, such as natural disasters, network failures, or technical issues.
 
-Please review and agree to the terms before proceeding.''',
+Please review and agree to the terms and also open your location before proceeding.''',
                   style: TextStyle(fontSize: 16),
                 ),
               ),
